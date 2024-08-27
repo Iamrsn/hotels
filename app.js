@@ -3,6 +3,7 @@ const db = require("./db");
 const app = express();
 const bodyparser = require("body-parser");
 app.use(bodyparser.json());
+require("dotenv").config();
 
 app.get("/", (req, res) => {
   res.send("hello world");
@@ -18,7 +19,7 @@ app.use("/menu",menuRoutes)
 const personRoutes= require("./routes/personRoutes");
 app.use("/person",personRoutes)
 
-
-app.listen(3000, () => {
+const PORT=process.env.PORT || 3000
+app.listen(PORT, () => {
   console.log("run");
 });
