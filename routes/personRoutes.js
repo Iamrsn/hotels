@@ -1,27 +1,78 @@
 const express = require("express");
 const person = require("./../models/person");
 const { route } = require("./menuRoutes");
+const {jwtauthmiddleware,generatetoken} = require("./../jwt")
 
 const router = express.Router();
 
-router.post("/", async (req, res) => {
+router.post("/signup", async (req, res) => {
   try {
     const data = req.body; //user jo data dega wo body me deta hai to ham usko data me save kr lie
     const newperson = new person(data); //use ham new person banaye or ek person ka structure mere db me tha to uske jaisa ek banaye mt constructor use kie uska or usme data pass kr die jo req.body wala tha..
-    const savedperson = await newperson.save(); //await lagaye kuki time lagyega or usko save kr lie mtlb store
+    const response = await newperson.save(); //await lagaye kuki time lagyega or usko save kr lie mtlb store
     console.log("data saved");
-    res.status(200).json(savedperson);
+
+    const payload = {
+      id: response.id,
+      username:response.username
+    }
+    console.log(JSON.stringify(payload))
+    const token = generatetoken(payload)
+    console.log("token is",token)
+
+    res.status(200).json({response:response,token:token});
   } catch (error) {
     console.error(error);
-    res.status(400).json({ error: "internal error" });
+    res.status(500).json({ error: "internal error" });
   }
 });
 
+//login routes
+
+router.post("/login", async (req,res)=>{
+   try {
+      const {username,password}=req.body;
+      //find by username
+      const user =  await person.findOne({username:username})
+      if(!user || !(await user.comparePassword(password))){
+        return res.status(400).json({error:"invalid username password"})
+      }
+      //generate token
+      const payload = {
+        id:user.id,
+        username:user.username
+      }
+      const token=generatetoken(payload);
+      res.json({token:token})
+   } catch (error) {
+    console.log(error);
+    res.status(500).json({error:"internal error"})
+   }
+})
+
+//profile route
+router.get("/profile",jwtauthmiddleware , async (res,req)=>{
+   try {
+    const userdata=req.user;
+    console.log("userdata is",userdata)
+
+    const userid = userdata.id;
+    const user = await person.findById(userid);
+
+    res.status(200).json({user})
+
+   } catch (error) {
+    console.log(error);
+    res.status(500).json({error:"internal error"})
+   }
+})
+
 //get method to get the person
-router.get("/", async (req, res) => {
+router.get("/",jwtauthmiddleware ,async (req, res) => {
   try {
     const aadmilog = await person.find();
-    console.log(aadmilog);
+    console.log("fetched");
+    console.log(aadmilog)
     res.status(200).json(aadmilog);
   } catch (error) {
     console.error(error);
